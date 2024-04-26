@@ -2,7 +2,8 @@ import urllib.request
 from bs4 import BeautifulSoup
 import urllib.parse
 from db_connection import DBConnection  # Import DBConnection from the separate file
-
+from urllib.error import HTTPError, URLError
+import time
 # Define Frontier class
 class Frontier:
     def __init__(self, initial_url):
@@ -26,21 +27,45 @@ class Crawler:
     def __init__(self, frontier, db_connection):
         self.frontier = frontier
         self.db_connection = db_connection
+        self.retry_attempts = 3  # Maximum retry attempts
+        self.retry_delay = 5  # Delay in seconds between retries
 
     def retrieveHTML(self, url):
-        response = urllib.request.urlopen(url)
-        return response.read()
+        for attempt in range(self.retry_attempts):
+            try:
+                response = urllib.request.urlopen(url)
+                return response.read()  # Retrieve HTML content
+            except HTTPError as e:
+                if e.code == 500:
+                    print(f"HTTP 500 error on {url}: {e}. Attempt {attempt + 1} of {self.retry_attempts}")
+                    time.sleep(self.retry_delay)  # Wait before retrying
+                else:
+                    print(f"Failed to retrieve {url}: {e}")
+                    return None
+            except URLError as e:
+                print(f"URL Error on {url}: {e}")
+                return None
+        return None  # Return None if all attempts fail
 
     def storePage(self, url, html):
-        page_data = {
-            "url": url,
-            "html": html.decode("utf-8"),  # Correct field name 'html'
-        }
-        self.db_connection.insert_page(page_data)  # Store in MongoDB
+        if html:
+            # Attempt decoding with UTF-8, handling errors
+            try:
+                decoded_html = html.decode("utf-8", errors='replace')  # Replace invalid bytes
+            except UnicodeDecodeError:
+                decoded_html = html.decode("latin-1", errors='replace')  # Try different encoding
+            
+            page_data = {
+                "url": url,
+                "html": decoded_html,  # Store decoded HTML
+            }
+            self.db_connection.insert_page(page_data)  # Store in MongoDB
+        else:
+            print(f"Cannot store {url}: Invalid HTML content")
 
     def target_page(self, html):
         soup = BeautifulSoup(html, "html.parser")
-        return bool(soup.find("h1", text="Permanent Faculty"))
+        return bool(soup.find("h1", text="Faculty and Staff"))
 
     def run(self):
         while not self.frontier.done():
@@ -54,7 +79,7 @@ class Crawler:
                 soup = BeautifulSoup(html, "html.parser")
                 for link in soup.find_all("a", href=True):
                     relative_url = link["href"]
-                    base_url = "https://www.cpp.edu/sci/computer-science/"
+                    base_url = "https://www.cpp.edu/engineering/ce/index.shtml"
                     if not relative_url.startswith("http"):
                         full_url = urllib.parse.urljoin(base_url, relative_url)
                     else:
@@ -63,7 +88,7 @@ class Crawler:
 
 # Instantiate DBConnection and create Crawler with Frontier
 db_connection = DBConnection()  # Create DBConnection instance
-initial_url = "https://www.cpp.edu/sci/computer-science/"
+initial_url = "https://www.cpp.edu/sci/biological-sciences/index.shtml"
 frontier = Frontier(initial_url)
 
 crawler = Crawler(frontier, db_connection)  # Pass DBConnection to Crawler

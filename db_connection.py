@@ -7,12 +7,10 @@ class DBConnection:
         self.collection = self.db['pages']
 
     def insert_page(self, data):
-    
-        if 'url' not in data or 'content' not in data:
-            raise ValueError("URL and content are required fields.")
-                
-        # Insert the page into the database
-        self.collection.insert_one(data)
+        if 'url' not in data or 'html' not in data:  
+            raise ValueError("URL and HTML are required fields.")  
+          # Insert the page into the database
+        self.collection.insert_one(data)  
 
     def get_all_pages(self):
         return list(self.collection.find())
