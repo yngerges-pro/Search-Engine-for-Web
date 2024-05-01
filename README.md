@@ -1,5 +1,5 @@
 # Search-Engine-for-Web
-## Meet this goal by this Sunday at 11:59 PM
+## Clear your collection and rerun the crawling and parseing codes. Thank you! :)
 ### Name - Roles and Responsibilities - Definitions
 #### Youstina - Crawling, GUI, and GitHub Management - Will be sure to have everyone understand the project
 #### Alvin and Richard - Crawling and indexing - will complete coding parts of assigment and see crawler.py
