@@ -49,15 +49,9 @@ class Crawler:
 
     def storePage(self, url, html):
         if html:
-            # Attempt decoding with UTF-8, handling errors
-            try:
-                decoded_html = html.decode("utf-8", errors='replace')  # Replace invalid bytes
-            except UnicodeDecodeError:
-                decoded_html = html.decode("latin-1", errors='replace')  # Try different encoding
-            
             page_data = {
                 "url": url,
-                "html": decoded_html,  # Store decoded HTML
+                "html": html #decoded_html,  # Store decoded HTML
             }
             self.db_connection.insert_page(page_data)  # Store in MongoDB
         else:
@@ -67,7 +61,7 @@ class Crawler:
         soup = BeautifulSoup(html, "html.parser")
         return bool(soup.find("h1", text="Faculty and Staff"))
 
-    def run(self):
+    def run(self,url):
         while not self.frontier.done():
             url = self.frontier.nextURL()
             html = self.retrieveHTML(url)
@@ -79,19 +73,18 @@ class Crawler:
                 soup = BeautifulSoup(html, "html.parser")
                 for link in soup.find_all("a", href=True):
                     relative_url = link["href"]
-                    base_url = "https://www.cpp.edu/engineering/ce/index.shtml"
                     if not relative_url.startswith("http"):
-                        full_url = urllib.parse.urljoin(base_url, relative_url)
+                        full_url = urllib.parse.urljoin(url, relative_url)
                     else:
                         full_url = relative_url
                     self.frontier.addURL(full_url)
 
 # Instantiate DBConnection and create Crawler with Frontier
 db_connection = DBConnection()  # Create DBConnection instance
-initial_url = "https://www.cpp.edu/sci/biological-sciences/index.shtml"
+initial_url = "https://www.cpp.edu/engineering/ce/index.shtml"
 frontier = Frontier(initial_url)
 
 crawler = Crawler(frontier, db_connection)  # Pass DBConnection to Crawler
-crawler.run()  # Start the crawler
+crawler.run(initial_url)  # Start the crawler
 
 print("Crawling Completed")

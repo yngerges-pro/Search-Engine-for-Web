@@ -22,7 +22,7 @@ else:
     soup = BeautifulSoup(html_content, "html.parser")
 
     # Extract professor information from the HTML content
-    professor_cards = soup.find_all("div", class_="directory-listing")
+    professor_cards = soup.find_all("div", class_="card-body d-flex flex-column align-items-start")
 
     if not professor_cards:
         print("No professor information found.")
@@ -35,13 +35,19 @@ else:
             professor_data["name"] = name_tag.text.strip() if name_tag else "Unknown"
 
             title_tag = card.find("div", class_="mb-1 text-muted")
-            professor_data["title"] = title_tag.text.strip() if title_tag else "Unknown"
+            professor_data["title"] = title_tag.get_text(strip=True) if title_tag else "Unknown"
 
-            office_tag = card.find("li", {"i class": "fas fa-building"})
-            professor_data["office"] = office_tag.text.strip() if office_tag else "Unknown"
+# Still trying to understand why value and info does not exist
+#-----------------------------------------------------------------------------------------------------------------
+            span_tags = card.find("ul").find_all("span", class_= "sr-only")
+            value = span_tags[0].find_next_siblings() if span_tags[0] else "Unknown"
+            if value:
+                professor_data["phone"] = value.text.strip()
 
-            phone_tag = card.find("li", {"i class": "fas fa-phone"})
-            professor_data["phone"] = phone_tag.text.strip() if phone_tag else "Unknown"
+            info = span_tags[1].find_next_siblings() if span_tags[1] else "Unknown"
+            if info:
+                professor_data["office"] = info.text.strip()
+#------------------------------------------------------------------------------------------------------------------
 
             email_tag = card.find("a", href=lambda x: x and "mailto:" in x)
             professor_data["email"] = email_tag["href"].replace("mailto:", "") if email_tag else "Unknown"
