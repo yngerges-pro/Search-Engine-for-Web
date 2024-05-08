@@ -1,8 +1,9 @@
 # Search-Engine-for-Web
-## Clear your collections from your databases and rerun the pages.py and parser_1.py codes. Thank you! :)
-## Complete by May 7th @7🕥
+## Clear your collections from your databases and rerun the crawlers.py and parser_1.py codes again before proceding. Thank you! :)
+## Complete by May 15th 🕥
 ### Name - Roles and Responsibilities - Definitions
 #### Youstina - connect frontend-backend - follow tutorials
-#### Alvin and Richard - fix bug (phone number and office) - will fix parser_1.py file
-#### Thoa - database manager and Search Engine - will complete MongoDB's database structure and create a db_connection.py, and do Assigment and view crawler.py
-#### Ryan - create frontend - will use vue.js and follow the page formate needed
+#### Alvin and Richard - indexing/ranking - follow tf-idf code example from Canvas
+#### Thoa - database manager and Search Engine - complete Presentation slides
+#### Ryan - Tokenize, Lemmatization, remove stopping words of data from database - query data from database and use Vector arrays
+##### Ryan - will be used for tf-idf calculations
