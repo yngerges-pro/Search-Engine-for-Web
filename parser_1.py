@@ -2,6 +2,9 @@ from db_connection import DBConnection
 from bs4 import BeautifulSoup
 from pymongo.errors import PyMongoError  # MongoDB error handling
 
+import re
+from crawlers import Crawler
+
 # Instantiate DBConnection to connect to MongoDB
 db_connection = DBConnection()
 pages_collection = db_connection.db["pages"]
@@ -30,24 +33,12 @@ else:
         for card in professor_cards:
             professor_data = {}
 
-            # Extracting professor details from the HTML structure
+            # Extracting professor details from the HTML structure from "Faculty & Staff"
             name_tag = card.find("h3", class_="mb-0")
             professor_data["name"] = name_tag.text.strip() if name_tag else "Unknown"
 
             title_tag = card.find("div", class_="mb-1 text-muted")
             professor_data["title"] = title_tag.get_text(strip=True) if title_tag else "Unknown"
-
-# Still trying to understand why value and info does not exist
-#-----------------------------------------------------------------------------------------------------------------
-            span_tags = card.find("ul").find_all("span", class_= "sr-only")
-            value = span_tags[0].find_next_siblings() if span_tags[0] else "Unknown"
-            if value:
-                professor_data["phone"] = value.text.strip()
-
-            info = span_tags[1].find_next_siblings() if span_tags[1] else "Unknown"
-            if info:
-                professor_data["office"] = info.text.strip()
-#------------------------------------------------------------------------------------------------------------------
 
             email_tag = card.find("a", href=lambda x: x and "mailto:" in x)
             professor_data["email"] = email_tag["href"].replace("mailto:", "") if email_tag else "Unknown"
@@ -55,10 +46,37 @@ else:
             website_tag = card.find("a", href=lambda x: x and "http" in x)
             professor_data["website"] = website_tag["href"] if website_tag else "Unknown"
 
-            # Insert the professor data into the MongoDB collection
+            #Insert the professor data into the MongoDB collection
             try:
                 professors_collection.insert_one(professor_data)
             except PyMongoError as e:
                 print(f"Failed to insert professor data: {e}")
 
-        print("Professor information successfully stored in MongoDB.")
+    CrawObj = Crawler()
+
+    regex = re.compile("^https://www\.cpp\.edu/faculty/")
+    lookFor = {"website": {"$regex": regex}}
+
+    # Retrieve the HTML content from MongoDB using the specified URL
+    Professors_Pages = professors_collection.find(lookFor)
+    #temp = list(Professors_Pages)
+
+    for link in Professors_Pages:
+        #Extract Professor's "Research Interest" 
+        html = CrawObj.retrieveHTML(link["website"])
+
+        bs = BeautifulSoup(html, "html.parser")
+            
+        div_tag = bs.find("div", {"class":"row mbtm row-eq-height-fac"})
+        Research = div_tag.find("aside").find("div", {"class":"accolades"}).get_text(strip=True) if div_tag else "unknown"
+        #Insert the professor data into the MongoDB collection
+        try:
+            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Research-Interest":Research}})
+        except PyMongoError as e:
+            print(f"Failed to insert professor data: {e}")
+
+    print("Professor information successfully stored in MongoDB.")
+    print("Professor Research successfully stored in MongoDB.")
+
+    
+
