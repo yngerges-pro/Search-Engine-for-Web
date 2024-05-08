@@ -24,7 +24,12 @@ filtered_query = ' '.join(filtered_tokens)
 lemma_vectorizer = CountVectorizer(tokenizer=LemmaTokenizer(), token_pattern=None)
 lemma_token_vector = lemma_vectorizer.fit_transform([filtered_query])
 
-# converts lemmatized query into acceptable format for character n-grams
+# Summarize
+print("Lemma vocabulary:", lemma_vectorizer.vocabulary_)
+print("Lemmatized vector shape:", lemma_token_vector.shape)
+print("Lemmatized vector array:", lemma_token_vector.toarray())
+
+# Converts lemmatized query into acceptable format for character n-grams
 lemmatized_tokens = lemma_vectorizer.get_feature_names_out()
 
 # Character n-grams
@@ -32,6 +37,6 @@ ngram_vectorizer = CountVectorizer(analyzer='char_wb', ngram_range=(5, 5))
 ngram_token_vector = ngram_vectorizer.fit_transform(lemmatized_tokens)
 
 # Placeholder for retrieving and displaying ranked documents
-print("Vocabulary:", ngram_vectorizer.vocabulary_)
-print("Encoded vector shape:", ngram_token_vector.shape)
-print("Encoded vector array:", ngram_token_vector.toarray())
+print("\nVocabulary (n-gram):", ngram_vectorizer.vocabulary_)
+print("Encoded vector shape (n-gram):", ngram_token_vector.shape)
+print("Encoded vector array (n-gram):", ngram_token_vector.toarray())
