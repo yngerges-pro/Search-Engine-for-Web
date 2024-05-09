@@ -69,9 +69,17 @@ else:
             
         div_tag = bs.find("div", {"class":"row mbtm row-eq-height-fac"})
         Research = div_tag.find("aside").find("div", {"class":"accolades"}).get_text(strip=True) if div_tag else "unknown"
-        #Insert the professor data into the MongoDB collection
+
+        another_tag = bs.find("div", {"class" : "section-menu"})
+        Education = another_tag.find("div", {"class":"col"}).get_text(strip=True) if another_tag else "unknown"
+        
+        tag = bs.find("div", {"class" : "fac-info"})
+        Contact = tag.find("div", {"class" : "span10"}).get_text(strip=True) if tag else "unknown"
+
         try:
             professors_collection.update_one({"_id":link["_id"]},{"$set":{"Research-Interest":Research}})
+            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Education":Education}})
+            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Contact-Info":Contact}})
         except PyMongoError as e:
             print(f"Failed to insert professor data: {e}")
 
