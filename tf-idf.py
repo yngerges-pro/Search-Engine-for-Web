@@ -1,42 +1,47 @@
-# TfidfVectorizer
-# CountVectorizer
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from pymongo import MongoClient
+from sklearn.feature_extraction.text import TfidfVectorizer
 from db_connection import DBConnection
+import pandas as pd
 
 # Connect to MongoDB
 db_connection = DBConnection()
 professors_collection = db_connection.db["professors"]
 
-# Retrieve documents from MongoDB
-documents = [doc.get('Research-Interest', '') for doc in professors_collection.find({})]
+# Retrieve documents from MongoDB and format into a list of strings
+documents = []
+for doc in professors_collection.find({}):
+    document = ""
+    for key, value in doc.items():
+        if key in ["name", "title", "email", "website", "Research-Interest", "Education", "Contact-Info"]:
+            document += str(value) + " "
+    documents.append(document)
 
-# Instantiate the vectorizer object
-countvectorizer = CountVectorizer(analyzer='word', stop_words='english')
+# Create list of terms with term frequency for each document
+term_frequency_docs = []
+for doc in documents:
+    term_freq = {}
+    for term in doc.split():
+        term_freq[term] = term_freq.get(term, 0) + 1
+    term_frequency_docs.append(term_freq)
 
-# Convert the documents into a matrix
-countvectorizer.fit(documents)
-training_v = countvectorizer.transform(documents)
+# Create index mapping
+index_mapping = list(range(len(documents)))
 
-# Retrieve the terms found in the corpora
-count_tokens = countvectorizer.get_feature_names_out()
+# Initialize TfIdfVectorizer
+tfidf_vectorizer = TfidfVectorizer()
 
-# Transfer the training term matrix of CountVectorizer to TF-IDF
-tfidf_training = TfidfTransformer()
-tfidf_training.fit(training_v)
-tfidf_training_matrix = tfidf_training.transform(training_v)
+# Fit the vectorizer and transform the documents
+tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
 
-# Format TF-IDF transformed matrices
-tfidf_matrices = []
-for i, doc in enumerate(professors_collection.find({})):
-    tfidf_matrix_dict = {}
-    for j, term in enumerate(count_tokens):
-        tfidf_matrix_dict[term] = tfidf_training_matrix[i, j]
-    tfidf_matrices.append(tfidf_matrix_dict)
+# Get feature names (terms)
+feature_names = tfidf_vectorizer.get_feature_names_out()
 
-# Insert TF-IDF transformed matrices into MongoDB
-for i, doc in enumerate(professors_collection.find({})):
-    # Create a new field in each document to store the TF-IDF transformed matrix
-    professors_collection.update_one({"_id": doc["_id"]}, {"$set": {"tfidf_matrix": tfidf_matrices[i]}})
+# Create DataFrame for TF-IDF matrix
+tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=feature_names)
 
-print("TF-IDF transformed matrices inserted into MongoDB.")
+# Add index mapping to the DataFrame
+index_mapping_df = pd.DataFrame({"Index": index_mapping})
+tfidf_df = pd.concat([index_mapping_df, tfidf_df], axis=1)
+
+# Print TF-IDF DataFrame
+print("TF-IDF DataFrame:")
+print(tfidf_df)
