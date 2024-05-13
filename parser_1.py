@@ -30,8 +30,13 @@ else:
     if not professor_cards:
         print("No professor information found.")
     else:
+        professor_data = {}
+        highest_id = 0
         for card in professor_cards:
-            professor_data = {}
+            highest_id += 1
+
+            #Assigns a number for every id
+            professor_data["_id"] = highest_id
 
             # Extracting professor details from the HTML structure from "Faculty & Staff"
             name_tag = card.find("h3", class_="mb-0")
