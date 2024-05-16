@@ -1,7 +1,6 @@
 from db_connection import DBConnection
 from bs4 import BeautifulSoup
 from pymongo.errors import PyMongoError  # MongoDB error handling
-
 import re
 from crawlers import Crawler
 
@@ -10,10 +9,11 @@ db_connection = DBConnection()
 pages_collection = db_connection.db["pages"]
 professors_collection = db_connection.db["professors"]
 
+# Instantiate Crawler
+crawler = Crawler()
+
 # Retrieve the HTML content from MongoDB using the specified URL
-faculty_page = pages_collection.find_one(
-    {"url": "https://www.cpp.edu/engineering/ce/faculty.shtml"}
-)
+faculty_page = pages_collection.find_one({"url": "https://www.cpp.edu/engineering/ce/faculty.shtml"})
 
 # Check if the faculty page is found and contains HTML content
 if not faculty_page:
@@ -30,12 +30,12 @@ else:
     if not professor_cards:
         print("No professor information found.")
     else:
-        professor_data = {}
         highest_id = 0
         for card in professor_cards:
+            professor_data = {}
+
             highest_id += 1
 
-            #Assigns a number for every id
             professor_data["_id"] = highest_id
 
             # Extracting professor details from the HTML structure from "Faculty & Staff"
@@ -51,45 +51,62 @@ else:
             website_tag = card.find("a", href=lambda x: x and "http" in x)
             professor_data["website"] = website_tag["href"] if website_tag else "Unknown"
 
-            #Insert the professor data into the MongoDB collection
+            # Insert the professor data into the MongoDB collection
             try:
                 professors_collection.insert_one(professor_data)
             except PyMongoError as e:
                 print(f"Failed to insert professor data: {e}")
 
-    CrawObj = Crawler()
+print("Professor information successfully stored in MongoDB.")
 
-    regex = re.compile("^https://www\.cpp\.edu/faculty/")
-    lookFor = {"website": {"$regex": regex}}
+# Retrieve professors' data from MongoDB
+professors = professors_collection.find({"website": {"$regex": "^https://www\.cpp\.edu/faculty/"}})
 
-    # Retrieve the HTML content from MongoDB using the specified URL
-    Professors_Pages = professors_collection.find(lookFor)
-    #temp = list(Professors_Pages)
 
-    for link in Professors_Pages:
-        #Extract Professor's "Research Interest" 
-        html = CrawObj.retrieveHTML(link["website"])
+# Iterate through each professor's data
+for professor in professors:
+    # Extract professor's additional information from their website
+    html = crawler.retrieveHTML(professor["website"])
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # # Extract research interests
+    # research_div = soup.find("div", class_="accolades")
+    # research_interests = ''
+    # if research_div:
+    #     research_interests = ' '.join(text for text in research_div.stripped_strings if not text.startswith('Research Interests'))
+    # else:
+    #     research_interests = "Unknown"
+    
+    # # Extract education information
+    # education_div = soup.find("div", class_="section-menu")
+    # education = education_div.find("div", class_="col").get_text(strip=True) if education_div else "Unknown"
+    
+    # # Extract contact information
+    # contact_div = soup.find("div", class_="fac-info")
+    # contact_info = contact_div.find("div", class_="span10").get_text(strip=True) if contact_div else "Unknown"
+    
+    # # Replace newline characters with spaces
+    # research_interests = research_interests.replace("\n", " ")
+    # education = education.replace("\n", " ")
+    # contact_info = contact_info.replace("\n", " ")
+    
+    # # Combine all information into one block as a string
+    # info = f"{research_interests} {education} {contact_info}"
 
-        bs = BeautifulSoup(html, "html.parser")
-            
-        div_tag = bs.find("div", {"class":"row mbtm row-eq-height-fac"})
-        Research = div_tag.find("aside").find("div", {"class":"accolades"}).get_text(strip=True) if div_tag else "unknown"
+    everything_search = soup.find("div", class_="row pgtop")
+    eve = everything_search.get_text(strip=True) if everything_search else "unknown"
+    eve_info = eve.replace("\n"," ")
 
-        another_tag = bs.find("div", {"class" : "section-menu"})
-        Education = another_tag.find("div", {"class":"col"}).get_text(strip=True) if another_tag else "unknown"
-        
-        tag = bs.find("div", {"class" : "fac-info"})
-        Contact = tag.find("div", {"class" : "span10"}).get_text(strip=True) if tag else "unknown"
-
-        try:
-            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Research-Interest":Research}})
-            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Education":Education}})
-            professors_collection.update_one({"_id":link["_id"]},{"$set":{"Contact-Info":Contact}})
-        except PyMongoError as e:
-            print(f"Failed to insert professor data: {e}")
-
-    print("Professor information successfully stored in MongoDB.")
-    print("Professor Research successfully stored in MongoDB.")
+    info = f"{eve_info}"
 
     
+    # Update professor's record in the database with the extracted information
+    try:
+        professors_collection.update_one(
+            {"_id": professor["_id"]},
+            {"$set": {"info": info}}
+        )
+    except PyMongoError as e:
+        print(f"Failed to update professor data: {e}")
 
+print("Professor information successfully updated in MongoDB.")
